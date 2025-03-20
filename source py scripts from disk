@@ -2,19 +2,25 @@ import sys
 import traceback
 
 try:
-    pythonScriptPath = '/home/yashp/Desktop/Scripts'
-    
-    # Add path if not already in sys.path
+    pythonScriptPath = '/path/to/Script/on/disk'
+
     if pythonScriptPath not in sys.path:
         sys.path.append(pythonScriptPath)
 
-    # Try importing and running the script
-    import create_merge_switch_yashp
-    create_merge_switch_yashp.main()
+    import name_of_script
 
-except ImportError as e:  # Python 3 syntax fix
+    # Python 2 and 3 compatibility for reloading module
+    try:
+        import importlib
+        importlib.reload(name_of_script)  # Python 3
+    except:
+        reload(name_of_script)  # Python 2
+
+    name_of_script.main()
+
+except ImportError as e:
     print("Cannot import script:", e)
 
 except Exception as e:
-    print("*** Exception Traceback ***")
-    traceback.print_exc()  # This prints the full traceback without manually unpacking it
+    print("*** Exception occurred ***")
+    traceback.print_exc()
