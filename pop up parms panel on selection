@@ -1,0 +1,5 @@
+node = hou.node(hou.selectedNodes()[0].path())
+desktop = hou.ui.curDesktop();
+pane = desktop.createFloatingPane(hou.paneTabType.Parm);
+pane.setCurrentNode(node);
+pane.setPin(True);
