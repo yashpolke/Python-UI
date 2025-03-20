@@ -1,0 +1,40 @@
+import hou
+def main():
+    node = hou.pwd()
+    for i in hou.selectedNodes():
+        if hou.nodeTypeCategories().keys():
+### Above function lets you call this function on any context ###
+            dir = i.path().split(i.name())[0]
+            selNodeName = i.path().split('/')[-1]
+            otherName = hou.ui.readInput('Name the node', buttons=('OK', 'CANCEL'), initial_contents='name_the_node')[1]
+            if otherName == "":
+                null = hou.node('/%s'%dir).createNode('null', 'OUT_%s'%selNodeName)
+            else:
+                null = hou.node('/%s'%dir).createNode('null', 'OUT_%s'%otherName)
+            selNodePos = i.position()
+            null.setColor(hou.Color( [0,0,0] ))
+### Setting node position ###
+            null.setPosition(hou.Vector2(selNodePos[0],selNodePos[1]-1))
+            null.setInput(0,i)
+            i.setSelected(False)
+            null.setSelected(True)
+ 
+### Setting render and display flags for respective contexts ###
+            curContext = i.type().category().name()
+            if curContext in ['Dop','Chop','Pop']:
+                null.setDisplayFlag(True)
+            if curContext in ['Sop', 'Cop2', 'CopNet']:
+                null.setRenderFlag(True)
+                null.setDisplayFlag(True)
+            if curContext in ['Vop']:
+                null.setPosition(hou.Vector2(selNodePos[0]+1.5,selNodePos[1]))
+                null.setInput(0,i)
+### Match the name of incoming nodes to that of the names of the nodes you have selected
+            for aNode in i.outputs():
+                x = 0
+                for inputs in aNode.inputs():
+                    if inputs.name() == i.name():
+                        aNode.setInput(x,null)
+                    else:
+                        x += 1
+                null.setInput(0,i)
