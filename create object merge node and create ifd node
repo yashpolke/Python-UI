@@ -1,0 +1,114 @@
+import hou
+
+
+def main():
+    # Define node types
+    NODE_TYPE_OBJMERGE = 'object_merge'
+    NODE_TYPE_GEO = 'geo'
+    NODE_TYPE_MANTRA = 'ifd'  # Houdini's Mantra render node
+
+    # Ensure /out exists
+    parent_out = hou.node('/out')
+    if not parent_out:
+        parent_out = hou.node('/').createNode('out', 'out')
+
+    # Prompt user for location choice
+    location_choice = hou.ui.displayMessage('Choose Location:', buttons=('SOP', 'OBJ'))
+    if location_choice < 0:  # User canceled the prompt
+        return
+
+    # Ensure nodes are selected
+    selected_nodes = hou.selectedNodes()
+    if not selected_nodes:
+        hou.ui.displayMessage("No nodes selected! Please select nodes before running the script.", buttons=('OK',))
+        return
+
+    # Process each selected node
+    for node in selected_nodes:
+        process_node(node, location_choice, NODE_TYPE_OBJMERGE, NODE_TYPE_GEO, NODE_TYPE_MANTRA, parent_out)
+
+
+def process_node(node, location_choice, nodeType1, nodeType2, nodeTypeOut, parent_out):
+    """
+    Processes a selected Houdini node based on the user-selected location.
+    """
+    node_name = node.name().replace('OUT_', '')  # Clean name
+    node_path = node.path()
+    node_pos = node.position()
+
+    # Get parent nodes
+    parent_sop = node.parent()
+    if not parent_sop:
+        hou.ui.displayMessage(f"Node {node.name()} has no parent!", buttons=('OK',))
+        return
+
+    parent_obj = hou.node('/obj')
+
+    if location_choice == 0:  # SOP Level
+        obj_merge_node = create_obj_merge_node(nodeType1, node_name, parent_sop)
+        obj_merge_node.setPosition(node_pos - hou.Vector2(0, 1))
+        obj_merge_node.setColor(hou.Color(0.188, 0.529, 0.459))
+        obj_merge_node.setParms({'objpath1': node_path, 'xformtype': 1})
+
+    else:  # OBJ Level
+        render_node = create_obj_render_node(nodeType2, node_name, parent_obj)
+        render_node.setPosition(parent_sop.position() - hou.Vector2(0, 1))
+        render_node.setColor(hou.Color(0.322, 0.259, 0.58))
+
+        obj_merge_node2 = create_obj_merge_node(nodeType1, node_name, render_node)
+        obj_merge_node2.setColor(hou.Color(0.188, 0.529, 0.459))
+        obj_merge_node2.setParms({'objpath1': node_path, 'xformtype': 1})
+
+        # Create Mantra node
+        mantra_node = create_mantra_node(nodeTypeOut, node_name, parent_out)
+        if mantra_node:
+            mantra_node.parm('forceobject').set(render_node.name())
+            mantra_node.parm('vobject').set('')
+            mantra_node.parm('alights').set('')
+
+
+def create_obj_merge_node(node_type, node_name, parent_node):
+    """
+    Creates an Object Merge node with a standardized naming convention.
+    """
+    obj_merge = parent_node.createNode(node_type)
+    obj_merge.setName(f'IN_{node_name}', unique_name=True)
+    return obj_merge
+
+
+def create_obj_render_node(node_type, node_name, parent_node):
+    """
+    Creates a Geometry node (Render Node) at OBJ level.
+    """
+    render_node = parent_node.createNode(node_type)
+
+    # Clean up any default subnodes in the new Geo node
+    for child in render_node.children():
+        child.destroy()
+
+    render_node.setName(f'RENDER_{node_name}', unique_name=True)
+    return render_node
+
+
+def create_mantra_node(node_type, node_name, parent_node):
+    """
+    Creates a Mantra render node.
+    """
+    if not parent_node:
+        hou.ui.displayMessage("Parent node does not exist!", buttons=('OK',))
+        return None
+
+    print(f"Creating node: {node_type} under {parent_node.path()}")  # Debugging line
+
+    try:
+        mantra = parent_node.createNode(node_type)
+        mantra.setName(node_name, unique_name=True)
+        return mantra
+    except hou.OperationFailed as e:
+        print(f"Error creating {node_type}: {e}")
+        hou.ui.displayMessage(f"Failed to create node of type {node_type}. Check the node type name.", buttons=('OK',))
+        return None
+
+
+if __name__ == "__main__":
+    main()
