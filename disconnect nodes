@@ -1,0 +1,16 @@
+import hou
+
+def main():
+    # Loop through selected nodes
+    for node in hou.selectedNodes():
+        # Get all connected inputs
+        inputs = node.inputs()
+        
+        # Disconnect each input properly
+        for index, _ in enumerate(inputs):
+            node.setInput(index, None)  # Unwires the input at the given index
+
+        print(f"Disconnected all inputs from: {node.name()}")
+
+# Run the function
+main()
