@@ -1,0 +1,33 @@
+import hou
+
+def main():
+    # Ensure that at least two nodes are selected
+    selected_nodes = hou.selectedNodes()
+    if len(selected_nodes) < 2:
+        print("Please select at least two nodes.")
+        return
+
+    # Sort the nodes by their Y position first
+    sorted_by_y = sorted([(node.position()[1], node) for node in selected_nodes])
+
+    # Now, within each group of nodes with the same Y position, sort by X position
+    sorted_nodes = []
+    current_y = None
+    x_group = []
+    for pos_y, node in sorted_by_y:
+        if current_y is None or current_y == pos_y:
+            x_group.append((node.position()[0], node))  # Append to the x_group based on X position
+        else:
+            sorted_nodes.extend(sorted(x_group))  # Sort by X position and add to the final list
+            x_group = [(node.position()[0], node)]  # Reset the x_group for the new Y level
+        current_y = pos_y
+
+    # Add the last group (sorted by X)
+    if x_group:
+        sorted_nodes.extend(sorted(x_group))
+
+    # Connect the nodes based on sorted X and Y positions
+    for i in range(len(sorted_nodes) - 1):
+        sorted_nodes[i][1].setInput(0, sorted_nodes[i + 1][1])
+
+main()
