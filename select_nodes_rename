@@ -1,0 +1,61 @@
+import hou
+
+# 1. Check if a node is currently selected to pre-fill both fields
+initial_type = ""
+initial_name = ""
+selected_nodes = hou.selectedNodes()
+
+if selected_nodes:
+    # Grab the type and exact name of the first selected node
+    initial_type = selected_nodes[0].type().name()
+    initial_name = selected_nodes[0].name()
+
+# 2. Define the labels for the two input fields
+input_labels = ["Node Type (e.g., null, merge, switch, geo):", "Name contains:"]
+
+# 3. Open the multi-input dialog box with both fields pre-filled
+button, user_inputs = hou.ui.readMultiInput(
+    "Filter selection by Type and Name content:",
+    input_labels,
+    buttons=("OK", "Cancel"),
+    title="Select Nodes by Type and Substring",
+    initial_contents=[initial_type, initial_name]
+)
+
+# 4. Proceed if the user clicked 'OK' (index 0)
+if button == 0:
+    target_type = user_inputs[0].strip().lower()
+    target_substring = user_inputs[1].strip().lower()
+    
+    # Check if the active network editor exists
+    network_editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    
+    if network_editor:
+        current_path = network_editor.pwd()
+        hou.clearAllSelected()
+        found_count = 0
+        
+        # Loop through nodes in the current network
+        for node in current_path.children():
+            # Get the internal type name and node name
+            node_type = node.type().name().lower()
+            node_name = node.name().lower()
+            
+            # Boolean filters
+            type_match = not target_type or (target_type in node_type)
+            name_match = not target_substring or (target_substring in node_name)
+            
+            if type_match and name_match:
+                node.setSelected(True, clear_all_selected=False)
+                found_count += 1
+                
+        # Status bar feedback
+        if found_count > 0:
+            hou.ui.setStatusMessage(f"Selected {found_count} nodes matching your criteria.")
+        else:
+            hou.ui.setStatusMessage("No matching nodes found in this network.", hou.severityType.Warning)
+            
+    else:
+        hou.ui.displayMessage("Please open a Network Editor pane first.", severity=hou.severityType.Error)
+else:
+    hou.ui.setStatusMessage("Selection canceled.")
