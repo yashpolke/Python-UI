@@ -1,0 +1,35 @@
+import hou
+import re
+
+# 1. Get the current selection
+selected_nodes = hou.selectedNodes()
+
+if not selected_nodes:
+    hou.ui.displayMessage("Please select some nodes first!", severity=hou.severityType.Warning)
+else:
+    # 2. Helper function to extract digits from node names for accurate sorting
+    def get_digit_suffix(node):
+        match = re.search(r'\d+', node.name())
+        return int(match.group()) if match else 0
+
+    # 3. Sort nodes in INCREASING order of their digits (e.g., node_0, node_1, node_2)
+    sorted_nodes = sorted(selected_nodes, key=get_digit_suffix)
+
+    # 4. Find the initial starting position (the highest node in the network editor)
+    # This ensures your stack starts exactly where your top node currently sits
+    start_pos = sorted_nodes[0].position()
+    for node in sorted_nodes:
+        if node.position()[1] > start_pos[1]:
+            start_pos = node.position()
+
+    # 5. Define the spacing unit (1 unit down on the Y-axis per node)
+    x_spacing = 1.0
+    y_spacing = 1.0
+    
+    # 6. Arrange the sorted nodes decreasing along the Y axis
+    # Using a hou.UndoGroup context so you can hit Ctrl+Z to undo the entire alignment instantly
+    with hou.undos.group("Arrange Nodes Numerically"):
+        for index, node in enumerate(sorted_nodes):
+            new_x = start_pos[0] + (index * x_spacing)
+            new_y = start_pos[1] - (index * y_spacing)
+            node.setPosition(hou.Vector2(new_x, new_y))
